@@ -23,7 +23,8 @@ RUN apt-get update -y && apt-get install -y \
     libxaw7-dev \
     libxmu-dev \
     xaw3dg-dev \
-    libxpm-dev
+    libxpm-dev \
+    && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /iraf
 
@@ -46,11 +47,8 @@ WORKDIR /iraf/x11iraf-2.1
 RUN make && \
     make install
 
-# Clean up unnecessary packages and clean apt cache
-RUN apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/*
-
 # Go back to home directory
-WORKDIR $HOME
+WORKDIR /root
 
 # Will start a shell when container runs
 CMD ["/bin/bash"]
