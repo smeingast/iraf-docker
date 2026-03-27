@@ -1,14 +1,11 @@
-FROM ubuntu:22.04
+# --- Builder stage ---
+FROM ubuntu:22.04 AS builder
 
-# set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
-ENV DISPLAY=host.docker.internal:0
-ENV USER=root
 
-# Install dependencies
+# Install build dependencies
 RUN apt-get update -y && apt-get install -y \
     wget \
-    saods9 \
     unzip \
     gcc \
     make \
@@ -24,7 +21,7 @@ RUN apt-get update -y && apt-get install -y \
     libxmu-dev \
     xaw3dg-dev \
     libxpm-dev \
-    && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /iraf
 
@@ -38,7 +35,7 @@ RUN wget https://github.com/iraf-community/iraf/archive/refs/tags/v2.17.1.zip &&
 
 # Build and test IRAF
 WORKDIR /iraf/iraf-2.17.1
-RUN make > build.log && \
+RUN make > /dev/null && \
     make test && \
     make install
 
@@ -47,9 +44,33 @@ WORKDIR /iraf/x11iraf-2.1
 RUN make && \
     make install
 
-# Go back to home directory
+# --- Runtime stage ---
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV DISPLAY=host.docker.internal:0
+ENV USER=root
+
+# Install only runtime dependencies (no build tools or -dev packages)
+RUN apt-get update -y && apt-get install -y \
+    saods9 \
+    libcurl4 \
+    libexpat1 \
+    libreadline8 \
+    libncurses6 \
+    tcl \
+    libxaw7 \
+    libxmu6 \
+    xaw3dg \
+    libxpm4 \
+    && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Copy installed IRAF and x11iraf from builder
+COPY --from=builder /usr/local /usr/local
+COPY --from=builder /etc/iraf /etc/iraf
+COPY --from=builder /etc/terminfo/x/xgterm /etc/terminfo/x/xgterm
+
 WORKDIR /root
 
-# Will start a shell when container runs
 CMD ["/bin/bash"]
 
